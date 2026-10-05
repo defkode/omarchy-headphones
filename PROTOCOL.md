@@ -2092,13 +2092,14 @@ charging bytes but are not read (below). Tag 4 (`14 0a`) never changed.
   When the lid **closes** on it, `2b 5f 01` arrives and the bud reads **0**;
   when the lid opens, `2b 5f 00` and its level again. The overall level did
   not follow it to 0. Seen for each bud.
-- **The case is reported second-hand, through the left bud.** In session 3
+- **The case is reported second-hand, through a docked bud.** In session 3
   the case byte in tag 3 went `01` → `00` → `01` in step with the cable,
   but the left bud was docked throughout. Afterwards, with the bridge
   running, the owner unplugged the case and the byte stayed `01`, and the
-  case level rose 68 → 72 *after* the unplug; it refreshed when the left
-  bud was docked, and not when the right one was. So the case byte is not a
-  live charging state, and the case level lags in the same way.
+  case level rose 68 → 72 *after* the unplug. The owner saw the case figures
+  refresh when the left bud docked, and later when the right one did
+  (72 → 84). So the case byte is not a live charging state, and the case
+  level lags in the same way: both are as fresh as the last docking.
 - The buds' bytes in tag 3 stayed `00` throughout, including the left bud
   sitting in the case, on battery and on the cable, at 95%.
 - The battery query was answered every time it was asked, 3–5 s apart.
@@ -2124,6 +2125,5 @@ shell keeps retrying until the phone lets go. The line is
 ### Not established
 
 Whether a bud's charging byte ever changes — at a lower level than 95%,
-perhaps. Whether the case figures ever refresh through the right bud (the
-owner saw them refresh through the left only). What tag 4 means. No write
+perhaps. What tag 4 means. No write
 was ever sent.

@@ -154,8 +154,9 @@ The case byte in tag 3 read 01 when the session began and dropped to 00 at
 the case on a cable, with the left bud still docked. Read alone, that looks
 like a cable flag. It is not a live one: afterwards, with the bridge running,
 the owner unplugged the case and it went on reading 01 (and its level rose
-68 -> 72 after the unplug), and it refreshed when the left bud was docked,
-not when the right one was. The case's figures are relayed by the left bud.
+68 -> 72 after the unplug). The case's figures are relayed by a docked bud:
+the owner saw them refresh when the left bud docked, and later when the
+right one did (case 72 -> 84).
   0.03s ### STEP: Recording — wear both buds, wait
   0.05s connected to channel 1
   0.05s -> battery       5a 00 09 00 01 08 01 00 02 00 03 00 fb b9   tag 1=, tag 2=, charging 

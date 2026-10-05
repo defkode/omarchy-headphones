@@ -3,7 +3,7 @@
   "owner": "defkode",
   "bridge": "huawei-bridge",
   "capture": "docs/captures/huawei-freebuds-se-2.txt",
-  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud reads 0 once the case lid closes on it, and is left out. Tag 3 is not read: its case byte is relayed by the left bud and goes stale without it, and the buds' bytes never changed. No noise control: the line lists no modes. Frames from sessions 2 and 3 of the capture.",
+  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud reads 0 once the case lid closes on it, and is left out. Tag 3 is not read: its case byte is relayed by a docked bud and goes stale without one, and the buds' bytes never changed. No noise control: the line lists no modes. Frames from sessions 2 and 3 of the capture.",
   "session": {},
   "steps": [
     {

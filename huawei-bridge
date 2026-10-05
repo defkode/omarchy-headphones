@@ -46,8 +46,8 @@ PROTOCOL.md):
              not read
 
 A bud in a closed case reads 0, and is left out of the line rather than
-drawn empty. Charging is never reported: the case's byte is relayed by the
-left bud and goes stale without it, and the buds' bytes never changed.
+drawn empty. Charging is never reported: the case's byte is relayed by a
+docked bud and goes stale without one, and the buds' bytes never changed.
 """
 import ctypes
 import errno
@@ -197,8 +197,8 @@ def parse_battery(data):
     closes, while the overall level (tag 1) stays put, and an empty bud would
     be off. It is left out.
 
-    Tag 3 is not read. Its case byte is relayed through the left bud and
-    refreshed only while that bud is docked: unplugged with no bud inside,
+    Tag 3 is not read. Its case byte is relayed through a bud and refreshed
+    only when one is docked: unplugged with no bud inside,
     the case still read 01, and a bolt saying "charging" with the cable out
     is the lie the panel's Case row refuses. The buds' bytes stayed 00
     throughout, a bud charging in the case included.

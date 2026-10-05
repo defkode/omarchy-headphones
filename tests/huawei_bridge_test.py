@@ -113,7 +113,7 @@ class Framing(unittest.TestCase):
         self.assertEqual(bridge_module.parse_battery(frames[1][2]), {"right": 97, "case": 23})
 
     def test_the_case_byte_on_and_off_a_cable_changes_nothing_printed(self):
-        # The case byte is relayed by the left bud and goes stale without it
+        # The case byte is relayed by a docked bud and goes stale without one
         # (the owner unplugged the case and it still read 01), so it is not
         # a charging state; the two frames differ in it, and in the case level.
         for text, case in ((CASE_CHARGING, 63), (CASE_OFF_CABLE, 64)):
