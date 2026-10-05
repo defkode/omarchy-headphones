@@ -2050,8 +2050,8 @@ not a successful test. See `docs/TOZO-NC9-PRO-TESTS.md` for the final live repor
 ## HUAWEI FreeBuds SE 2 — battery over SPP
 
 Owner: [@defkode](https://github.com/defkode). Evidence is
-`docs/captures/huawei-freebuds-se-2.txt` (two `tools/huawei_probe.py`
-sessions, serial numbers masked) and `huawei-freebuds-se-2-bluetoothctl.txt`
+`docs/captures/huawei-freebuds-se-2.txt` (three `tools/huawei_probe.py`
+sessions, the third guided step by step; serial numbers masked) and `huawei-freebuds-se-2-bluetoothctl.txt`
 (the complete SDP list). Model BTFT0016, firmware 1.0.1.129. No other Huawei
 model is claimed.
 
@@ -2077,32 +2077,46 @@ it wants with zero length.
 | Battery | `5a 00 09 00 01 08 01 00 02 00 03 00 fb b9` | `5a 00 14 00 01 08 01 01 61 02 03 61 61 17 03 03 00 00 00 04 02 14 0a 5c 87` |
 | Battery, unasked | — | the same tags as `01 27`, on connect and on every change |
 | Device info | `01 07` with empty tags 0–24 | firmware (tag 07), model (0F), build (0A), serials (09, 18) |
-| Bud into / out of case | — | `5a 00 06 00 2b 5f 01 01 01 13 24` / `… 01 01 00 03 05` |
+| Lid closes on / opens off a bud | — | `5a 00 06 00 2b 5f 01 01 01 13 24` / `… 01 01 00 03 05` |
 
 In the battery answer, tag 1 is an overall level, tag 2 three bytes — left,
-right, case — and tag 3 three bytes that stayed `00 00 00` throughout,
-including while a bud sat charging in the case. Tag 4 (`14 0a`) never changed.
+right, case — and tag 3 a charging byte for each, in the same order. Tag 4
+(`14 0a`) never changed.
 
 ### What was verified on the hardware
 
-- Both buds and the case reported (97 / 97 / 23).
-- Each bud, put in the case, read **0** within a second, with `2b 5f 01`
-  just before; taken out, it read a real level again (the left one, 96).
-  The overall level did not follow it to 0.
-- The case figure stayed at 23 with a bud inside, and through the lid being
-  closed and opened (asked of the owner, not timed against the capture).
+- Both buds and the case reported from the first frame.
+- A bud taken out of the ear and held sends nothing: no `2b 5f`, no
+  battery change. `2b 5f` is not a wear sensor.
+- A bud put in the case with the lid open keeps reporting its own level.
+  When the lid **closes** on it, `2b 5f 01` arrives and the bud reads **0**;
+  when the lid opens, `2b 5f 00` and its level again. The overall level did
+  not follow it to 0. Seen for each bud.
+- The case's charging byte is `01` on a cable and `00` off it: it rose to
+  `01` within seconds of the case being plugged in, and the case level
+  climbed 63 → 64 → 66 → 68 while it was. The case figure is live, not
+  only read on the lid.
+- The buds' charging bytes stayed `00` throughout, including the left bud
+  sitting in the case, on battery and on the cable, at 95%.
 - The battery query was answered every time it was asked, 3–5 s apart.
+- **One client at a time.** With the owner's phone also connected, the
+  earbuds refused channel 1 (`ECONNREFUSED`) on every attempt, though their
+  SDP record still served it there; with the phone switched off, the same
+  connect was answered at once. The record lists a second serial service,
+  `COM6` on channel 4 under UUID `7033`; it is not used, and was not probed
+  past a connect.
 
 ### In the widget
 
 `huawei-bridge` asks for the battery on connect, then takes the earbuds'
 own `01 27` announcements, with a query every 60 s as a backstop. A 0 is a
 bud that is not reporting — it is left out of the line rather than drawn
-empty. Charging is never reported: no byte was seen to say it. The line is
-`"modes": true, "available": []`, which hides the mode row.
+empty. A refused channel is exit 1 with a line naming the likely holder,
+so the panel says why and the shell keeps retrying until the phone lets go. The case is reported charging from its byte; a bud never is. The
+line is `"modes": true, "available": []`, which hides the mode row.
 
 ### Not established
 
-Charging state; whether the case reports a fresh level when it is opened
-or charged; what tag 4 and the `2b 5f` value mean beyond the case events
-above. No write was ever sent.
+Whether a bud's charging byte ever changes — at a lower level than 95%,
+perhaps; until it is seen, a charging bud is not shown as one. What tag 4
+means. No write was ever sent.

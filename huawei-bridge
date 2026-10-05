@@ -6,16 +6,18 @@
 Prints one JSON object per line, and reads one command per line:
 
     stdout   {"modes": true, "available": [],
-              "battery": {"left": 97, "right": 97, "case": 23,
-                          "caseStale": false}}
+              "battery": {"left": 95, "right": 96, "case": 64,
+                          "charging": ["case"], "caseStale": false}}
              {"modes": false, "error": "..."}
     stdin    nothing it acts on: the FreeBuds SE 2 has no listening modes,
              so every line is ignored, and EOF is a clean stop
 
 Exit codes are BRIDGE.md's: 0 clean stop, 1 transient (the channel never
-opened, or closed under us), 3 linked but silent (the battery query went
-unanswered), 4 setup failure (bad arguments, a model this bridge has no row
-for, a Python without Bluetooth sockets).
+opened, or closed under us; also the channel refused — the earbuds serve it
+to one client, and a phone's AI Life app holding it is the case seen),
+3 linked but silent (the battery query went unanswered), 4 setup failure
+(bad arguments, a model this bridge has no row for, a Python without
+Bluetooth sockets).
 
 A battery-only bridge. The FreeBuds SE 2 has no noise control, so the line
 says `"available": []` — the panel draws no mode row — and carries the
@@ -35,17 +37,19 @@ PROTOCOL.md):
              (init 0, poly 1021) over everything before it
     tlv      <tag> <length> <value>
     01 08    battery: asked with empty tags 1, 2 and 3; answered with
-             1 = the overall level, 2 = left, right, case, 3 = three bytes
-             that stayed 00 with a bud charging, so not read
+             1 = the overall level, 2 = left, right, case, 3 = a charging
+             byte for each, of which only the case's was seen to change
     01 27    the same tags, sent by the earbuds on their own on a change
     01 06    sent once, empty, when the channel opens; not a battery answer
-    2B 5F    sent as a bud goes into the case (01) and comes out (00);
+    2B 5F    sent as the lid closes on a bud (01) and opens again (00);
              not read
 
-A bud in the case reads 0, and is left out of the line rather than drawn
-empty. Charging is never reported: no byte was seen to say it.
+A bud in a closed case reads 0, and is left out of the line rather than
+drawn empty. The case is reported charging on a cable; a bud never is, as
+its byte was never seen to say so.
 """
 import ctypes
+import errno
 import json
 import os
 import re
@@ -185,23 +189,30 @@ def parse_tlv(data):
 
 
 def parse_battery(data):
-    """{"left": 97, "right": 97, "case": 23}, or None.
+    """({"left": 95, "right": 96, "case": 64}, ["case"]), or (None, None).
 
     Tag 2 must be three levels, each 0-100. A 0 is a part that is not
-    reporting, not an empty one: a bud put in the case reads 0 while the
-    overall level (tag 1) stays put, and an empty bud would be off. It is
-    left out. Tag 3 is not read: it stayed 00 00 00 with a bud charging in
-    the case, so whatever it says, it is not that.
+    reporting, not an empty one: a bud in the case reads 0 once the lid
+    closes, while the overall level (tag 1) stays put, and an empty bud would
+    be off. It is left out.
+
+    Tag 3 is three bytes in the same order. The case's turned 01 when the
+    case went on a cable and 00 when it came off; that one is read. The buds'
+    stayed 00 throughout, a bud sitting in the case included, so they are
+    not: no bud is ever reported as charging.
     """
     tags = parse_tlv(data)
     if tags is None:
-        return None
+        return None, None
     levels_raw = tags.get(2)
     if levels_raw is None or len(levels_raw) != 3:
-        return None
+        return None, None
     if any(level > 100 for level in levels_raw):
-        return None
-    return {part: level for part, level in zip(PARTS, levels_raw) if level}
+        return None, None
+    levels = {part: level for part, level in zip(PARTS, levels_raw) if level}
+    flags = tags.get(3)
+    case_charging = flags is not None and len(flags) == 3 and flags[2] and "case" in levels
+    return levels, (["case"] if case_charging else [])
 
 
 class Bridge:
@@ -215,6 +226,7 @@ class Bridge:
         self.stopping = False
 
         self.levels = None
+        self.charging = []
         self.last_line = None
         self.next_poll = None
 
@@ -239,6 +251,13 @@ class Bridge:
             sock.setblocking(False)
             self.sock = sock
             return True
+        if getattr(last_error, "errno", None) == errno.ECONNREFUSED:
+            # The earbuds serve the channel to one client at a time; with a
+            # phone's AI Life app on it, they refuse everyone else. Retrying
+            # is right: it comes free when the phone lets go.
+            self.finish(EXIT_TRANSIENT, "the earbuds refused the battery channel"
+                        " — another device (Huawei AI Life) may hold it")
+            return False
         reason = getattr(last_error, "strerror", None) or str(last_error)
         self.finish(EXIT_TRANSIENT, "cannot open the Huawei channel: %s" % reason)
         return False
@@ -265,16 +284,18 @@ class Bridge:
     def on_frame(self, service, command, data):
         if service != SERVICE or command not in (CMD_BATTERY, CMD_BATTERY_EVENT):
             return
-        levels = parse_battery(data)
+        levels, charging = parse_battery(data)
         if levels is None:
             return
         self.levels = levels
+        self.charging = charging
         self.report()
 
     def report(self):
         if self.levels is None:
             return
         battery = dict(self.levels)
+        battery["charging"] = list(self.charging)
         battery["caseStale"] = False
         line = {"modes": True, "available": [], "battery": battery}
         if line != self.last_line:

@@ -147,4 +147,6 @@ the same device-reported-state rule as the existing commands.
 directly and accepts only its owner's model row. The model has no noise
 control: every line is `"modes": true, "available": []` with the `battery`
 object, so the panel draws no mode row and every stdin command is ignored
-without a frame. Exit 3 means the battery query went unanswered.
+without a frame. Exit 3 means the battery query went unanswered. The
+earbuds serve the channel to one client: while a phone's AI Life app holds
+it, they refuse the connection, which is exit 1 with an error line saying so.

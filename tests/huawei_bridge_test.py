@@ -29,6 +29,9 @@ ANSWER_98_98_23 = "5a 00 14 00 01 08 01 01 62 02 03 62 62 17 03 03 00 00 00 04 0
 CASE_IN = "5a 00 06 00 2b 5f 01 01 01 13 24"
 LEFT_IN_CASE = "5a 00 14 00 01 27 01 01 61 02 03 00 61 17 03 03 00 00 00 04 02 14 0a 18 77"
 CASE_OUT = "5a 00 06 00 2b 5f 01 01 00 03 05"
+# Session 3: the case on a cable (charging byte 01), and off it (00).
+CASE_CHARGING = "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 3f 03 03 00 00 01 04 02 14 0a c2 6a"
+CASE_OFF_CABLE = "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 40 03 03 00 00 00 04 02 14 0a e1 0b"
 
 
 class FakeSocket:
@@ -81,7 +84,8 @@ class Framing(unittest.TestCase):
                          "5a 00 09 00 01 08 01 00 02 00 03 00 fb b9")
 
     def test_the_crc_reproduces_every_captured_frame(self):
-        for text in (HELLO, EVENT_98_98_23, ANSWER_98_98_23, CASE_IN, LEFT_IN_CASE, CASE_OUT):
+        for text in (HELLO, EVENT_98_98_23, ANSWER_98_98_23, CASE_IN, LEFT_IN_CASE, CASE_OUT,
+                     CASE_CHARGING, CASE_OFF_CABLE):
             raw = harness.hexbytes(text)
             self.assertEqual(bridge_module.crc16(raw[:-2]), int.from_bytes(raw[-2:], "big"), text)
 
@@ -91,7 +95,7 @@ class Framing(unittest.TestCase):
         self.assertEqual([(s, c) for s, c, _ in frames], [(1, 0x06), (1, 0x27), (1, 0x08)])
         self.assertEqual(buffer, bytearray())
         self.assertEqual(bridge_module.parse_battery(frames[2][2]),
-                         {"left": 98, "right": 98, "case": 23})
+                         ({"left": 98, "right": 98, "case": 23}, []))
 
     def test_a_real_answer_survives_being_split_at_every_byte_boundary(self):
         raw = harness.hexbytes(ANSWER_98_98_23)
@@ -103,10 +107,15 @@ class Framing(unittest.TestCase):
                 frames += bridge_module.take_frames(buffer)
             self.assertEqual(len(frames), 1, "split at %d" % cut)
 
-    def test_a_bud_in_the_case_reads_0_and_is_left_out(self):
+    def test_a_bud_in_a_closed_case_reads_0_and_is_left_out(self):
         frames = bridge_module.take_frames(bytearray(harness.hexbytes(CASE_IN + " " + LEFT_IN_CASE)))
         self.assertEqual([(s, c) for s, c, _ in frames], [(0x2B, 0x5F), (1, 0x27)])
-        self.assertEqual(bridge_module.parse_battery(frames[1][2]), {"right": 97, "case": 23})
+        self.assertEqual(bridge_module.parse_battery(frames[1][2]), ({"right": 97, "case": 23}, []))
+
+    def test_the_case_on_a_cable_reads_charging(self):
+        for text, expected in ((CASE_CHARGING, ["case"]), (CASE_OFF_CABLE, [])):
+            frames = bridge_module.take_frames(bytearray(harness.hexbytes(text)))
+            self.assertEqual(bridge_module.parse_battery(frames[0][2])[1], expected, text)
 
     def test_bytes_before_a_frame_are_skipped(self):
         buffer = bytearray(b"\x00\x13\x37" + harness.hexbytes(ANSWER_98_98_23))
@@ -128,20 +137,29 @@ class Malformed(unittest.TestCase):
         self.assertEqual(bridge_module.take_frames(raw), [])
 
     def test_a_tlv_that_runs_off_the_end_is_nothing(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 62 62")), None)
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 62 62")), (None, None))
 
     def test_no_tag_2_is_nothing(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("01 01 62")), None)
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("01 01 62")), (None, None))
 
     def test_a_level_over_100_is_dropped_not_clamped(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 65 62 17")), None)
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 65 62 17")), (None, None))
 
-    def test_the_charging_bytes_are_not_read(self):
-        # Synthetic: non-zero bytes in tag 3 were never seen. Whatever they
-        # would mean, it was not charging — a bud charged with them at 00.
+    def test_only_the_case_charging_byte_is_read(self):
+        # Synthetic: the buds' bytes were never seen non-zero, a bud charging
+        # in the case included, so they say nothing here.
+        self.assertEqual(
+            bridge_module.parse_battery(harness.hexbytes("02 03 62 62 17 03 03 01 01 00")),
+            ({"left": 98, "right": 98, "case": 23}, []))
         self.assertEqual(
             bridge_module.parse_battery(harness.hexbytes("02 03 62 62 17 03 03 01 01 01")),
-            {"left": 98, "right": 98, "case": 23})
+            ({"left": 98, "right": 98, "case": 23}, ["case"]))
+
+    def test_a_charging_case_that_reads_0_is_not_charging_anything(self):
+        # Synthetic: a 0 is left out, and so is its charging flag.
+        self.assertEqual(
+            bridge_module.parse_battery(harness.hexbytes("02 03 62 62 00 03 03 00 00 01")),
+            ({"left": 98, "right": 98}, []))
 
     def test_a_frame_for_another_command_prints_nothing(self):
         s = Session()
@@ -166,6 +184,7 @@ class Loop(unittest.TestCase):
         self.connects = []
         self.sleeps = []
         self.refuse = 0
+        self.connect_error = OSError(111, "Connection refused")
 
         test = self
 
@@ -189,7 +208,7 @@ class Loop(unittest.TestCase):
                 test.connects.append(target)
                 if test.refuse:
                     test.refuse -= 1
-                    raise OSError(111, "Connection refused")
+                    raise test.connect_error
 
             def recv(self, size):
                 return test.sock.recv(size)
@@ -251,7 +270,8 @@ class Loop(unittest.TestCase):
                          ["5a 00 09 00 01 08 01 00 02 00 03 00 fb b9"])
         self.assertEqual(self.lines, [{
             "modes": True, "available": [],
-            "battery": {"left": 98, "right": 98, "case": 23, "caseStale": False}}])
+            "battery": {"left": 98, "right": 98, "case": 23,
+                        "charging": [], "caseStale": False}}])
 
     def test_silence_through_the_deadline_is_exit_3(self):
         self.script([(None, None, None)] * 20)
@@ -312,6 +332,14 @@ class Loop(unittest.TestCase):
         self.assertEqual(self.bridge().run(), bridge_module.EXIT_TRANSIENT)
         self.assertEqual(len(self.connects), bridge_module.CONNECT_ATTEMPTS)
         self.assertEqual(self.lines[-1]["modes"], False)
+        # Refused is what the earbuds answer while a phone holds the channel.
+        self.assertIn("another device", self.lines[-1]["error"])
+
+    def test_a_connect_that_times_out_says_so(self):
+        self.refuse = 99
+        self.connect_error = OSError(110, "Connection timed out")
+        self.assertEqual(self.bridge().run(), bridge_module.EXIT_TRANSIENT)
+        self.assertEqual(self.lines[-1]["error"], "cannot open the Huawei channel: Connection timed out")
 
     def test_a_stop_during_connect_makes_no_further_attempt(self):
         self.refuse = 99

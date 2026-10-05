@@ -3,7 +3,7 @@
   "owner": "defkode",
   "bridge": "huawei-bridge",
   "capture": "docs/captures/huawei-freebuds-se-2.txt",
-  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud in the case reads 0 and is left out. Tag 3 stayed 00 00 00 with a bud charging in the case, so charging is not reported. No noise control on this model: the line lists no modes. Frames from session 2 of the capture.",
+  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud reads 0 once the case lid closes on it, and is left out. Tag 3's case byte is 01 on a cable and 00 off it; the buds' bytes never changed, so no bud is reported charging. No noise control: the line lists no modes. Frames from sessions 2 and 3 of the capture.",
   "session": {},
   "steps": [
     {
@@ -35,6 +35,7 @@
           "left": 97,
           "right": 97,
           "case": 23,
+          "charging": [],
           "caseStale": false
         }
       }
@@ -49,7 +50,7 @@
     },
     {
       "device": "5a 00 06 00 2b 5f 01 01 01 13 24",
-      "note": "the left bud goes into the case"
+      "note": "the lid closes on the left bud"
     },
     {
       "line_count": 1,
@@ -57,7 +58,7 @@
     },
     {
       "device": "5a 00 14 00 01 27 01 01 61 02 03 00 61 17 03 03 00 00 00 04 02 14 0a 18 77",
-      "note": "left reads 0 in the case"
+      "note": "left reads 0 in the closed case"
     },
     {
       "line": {
@@ -66,14 +67,15 @@
         "battery": {
           "right": 97,
           "case": 23,
+          "charging": [],
           "caseStale": false
         }
       },
-      "note": "left left out, not drawn empty; no charging claimed"
+      "note": "left left out, not drawn empty"
     },
     {
       "device": "5a 00 06 00 2b 5f 01 01 00 03 05",
-      "note": "out of the case"
+      "note": "the lid opens"
     },
     {
       "device": "5a 00 14 00 01 27 01 01 60 02 03 60 61 17 03 03 00 00 00 04 02 14 0a 05 6b",
@@ -87,13 +89,14 @@
           "left": 96,
           "right": 97,
           "case": 23,
+          "charging": [],
           "caseStale": false
         }
       }
     },
     {
       "device": "5a 00 14 00 01 27 01 01 60 02 03 60 00 17 03 03 00 00 00 04 02 14 0a 33 8d",
-      "note": "the right bud in the case"
+      "note": "the right bud in the closed case"
     },
     {
       "line": {
@@ -102,13 +105,14 @@
         "battery": {
           "left": 96,
           "case": 23,
+          "charging": [],
           "caseStale": false
         }
       }
     },
     {
       "device": "5a 00 14 00 01 08 01 01 60 02 03 60 61 17 03 03 00 00 00 04 02 14 0a f1 0e",
-      "note": "the right bud out again, answered to a poll"
+      "note": "the lid open again, answered to a poll"
     },
     {
       "line": {
@@ -118,6 +122,61 @@
           "left": 96,
           "right": 97,
           "case": 23,
+          "charging": [],
+          "caseStale": false
+        }
+      }
+    },
+    {
+      "device": "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 3f 03 03 00 00 01 04 02 14 0a c2 6a",
+      "note": "session 3: the case goes on a cable, at 63"
+    },
+    {
+      "line": {
+        "modes": true,
+        "available": [],
+        "battery": {
+          "left": 95,
+          "right": 96,
+          "case": 63,
+          "charging": [
+            "case"
+          ],
+          "caseStale": false
+        }
+      }
+    },
+    {
+      "device": "5a 00 14 00 01 27 01 01 60 02 03 00 60 40 03 03 00 00 01 04 02 14 0a 3e e5",
+      "note": "the lid closes on the left bud while the case charges"
+    },
+    {
+      "line": {
+        "modes": true,
+        "available": [],
+        "battery": {
+          "right": 96,
+          "case": 64,
+          "charging": [
+            "case"
+          ],
+          "caseStale": false
+        }
+      }
+    },
+    {
+      "device": "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 40 03 03 00 00 00 04 02 14 0a e1 0b",
+      "note": "off the cable: the case byte back to 00"
+    },
+    {
+      "line": {
+        "modes": true,
+        "available": [],
+        "battery": {
+          "left": 95,
+          "right": 96,
+          "case": 64,
+          "charging": [],
           "caseStale": false
         }
       }
