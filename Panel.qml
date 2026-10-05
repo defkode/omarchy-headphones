@@ -85,15 +85,8 @@ Panel {
     "Pairing fast, judging faster",
     "Keeping the case in the loop"
   ]
-  // The two that are about the listening modes, said only where the panel has
-  // a mode row to back them: on earbuds with no noise control they are a lie.
-  readonly property var modePhrases: [
-    "Cancelling noise, politely",
-    "Reading the room, ambiently"
-  ]
-  readonly property var shownPhrases: Model.heroPhrases(activePhrases, modePhrases, modeRowVisible)
   readonly property bool rotatingPhrases: connected
-  readonly property string heroPhrase: shownPhrases[phraseIndex % shownPhrases.length]
+  readonly property string heroPhrase: activePhrases[phraseIndex % activePhrases.length]
   readonly property var current: followed.indexOf(chosen) !== -1
     ? chosen
     : (followed.length > 0 ? followed[0] : null)
@@ -393,7 +386,7 @@ Panel {
       to: 0.0; duration: 180; easing.type: Easing.OutQuad
     }
     ScriptAction {
-      script: root.phraseIndex = (root.phraseIndex + 1) % root.shownPhrases.length
+      script: root.phraseIndex = (root.phraseIndex + 1) % root.activePhrases.length
     }
     PropertyAnimation {
       target: hero; property: "metaOpacity"
