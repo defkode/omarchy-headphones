@@ -123,6 +123,17 @@ Headphones not on the list? [Add yours](#add-your-own-headphones).
 </tr>
 </table>
 
+<table>
+<tr>
+<td width="50%"><img src="docs/gallery/huawei-freebuds-se-2.png" alt="HUAWEI FreeBuds SE 2: left, right and case batteries, no mode row" width="100%"></td>
+<td width="50%"></td>
+</tr>
+<tr>
+<td align="center">HUAWEI FreeBuds SE 2 — <a href="https://github.com/defkode">@defkode</a></td>
+<td></td>
+</tr>
+</table>
+
 ## What it does
 
 - **Battery level** — per earbud and the case, or the single battery of
