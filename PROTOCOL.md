@@ -2046,3 +2046,63 @@ checkout after releasing the widget's mode bridge. It reads the initial mode,
 cycles the six known modes, verifies each query reply and restores the
 observed initial mode in a `finally` block. A failed restoration is a failure,
 not a successful test. See `docs/TOZO-NC9-PRO-TESTS.md` for the final live report.
+
+## HUAWEI FreeBuds SE 2 — battery over SPP
+
+Owner: [@defkode](https://github.com/defkode). Evidence is
+`docs/captures/huawei-freebuds-se-2.txt` (two `tools/huawei_probe.py`
+sessions, serial numbers masked) and `huawei-freebuds-se-2-bluetoothctl.txt`
+(the complete SDP list). Model BTFT0016, firmware 1.0.1.129. No other Huawei
+model is claimed.
+
+The earbuds have no Fast Pair stream, and BlueZ alone sees one figure for the
+pair. They have no noise control. What they do have is a vendor channel on
+plain RFCOMM channel 1 (16 refused the connection), behind the Serial Port
+UUID; the record carries nothing Huawei-specific. Routing therefore requires
+the exact reported name `HUAWEI FreeBuds SE 2` and the Serial Port UUID, like
+the TOZO row, and cannot claim arbitrary Serial Port headphones.
+
+### Frames
+
+    5A <len u16 BE> 00 <service> <command> <tlv...> <crc u16 BE>
+
+`len` counts from the `00` to the last TLV byte. The CRC is CRC-16/XMODEM
+(init 0, poly 1021, no reflection) over everything before it; every captured
+frame checks. Each TLV is `<tag> <length> <value>`, and a query is the tags
+it wants with zero length.
+
+| Operation | TX | Observed RX |
+|:--|:--|:--|
+| (channel opens) | — | `5a 00 03 00 01 06 3e bd`, empty, once |
+| Battery | `5a 00 09 00 01 08 01 00 02 00 03 00 fb b9` | `5a 00 14 00 01 08 01 01 61 02 03 61 61 17 03 03 00 00 00 04 02 14 0a 5c 87` |
+| Battery, unasked | — | the same tags as `01 27`, on connect and on every change |
+| Device info | `01 07` with empty tags 0–24 | firmware (tag 07), model (0F), build (0A), serials (09, 18) |
+| Bud into / out of case | — | `5a 00 06 00 2b 5f 01 01 01 13 24` / `… 01 01 00 03 05` |
+
+In the battery answer, tag 1 is an overall level, tag 2 three bytes — left,
+right, case — and tag 3 three bytes that stayed `00 00 00` throughout,
+including while a bud sat charging in the case. Tag 4 (`14 0a`) never changed.
+
+### What was verified on the hardware
+
+- Both buds and the case reported (97 / 97 / 23).
+- Each bud, put in the case, read **0** within a second, with `2b 5f 01`
+  just before; taken out, it read a real level again (the left one, 96).
+  The overall level did not follow it to 0.
+- The case figure stayed at 23 with a bud inside, and through the lid being
+  closed and opened (asked of the owner, not timed against the capture).
+- The battery query was answered every time it was asked, 3–5 s apart.
+
+### In the widget
+
+`huawei-bridge` asks for the battery on connect, then takes the earbuds'
+own `01 27` announcements, with a query every 60 s as a backstop. A 0 is a
+bud that is not reporting — it is left out of the line rather than drawn
+empty. Charging is never reported: no byte was seen to say it. The line is
+`"modes": true, "available": []`, which hides the mode row.
+
+### Not established
+
+Charging state; whether the case reports a fresh level when it is opened
+or charged; what tag 4 and the `2b 5f` value mean beyond the case events
+above. No write was ever sent.
