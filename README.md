@@ -125,7 +125,7 @@ Headphones not on the list? [Add yours](#add-your-own-headphones).
 
 <table>
 <tr>
-<td width="50%"><img src="docs/gallery/huawei-freebuds-se-2.png" alt="HUAWEI FreeBuds SE 2: left, right and case batteries, no mode row" width="100%"></td>
+<td width="50%"><img src="docs/gallery/huawei-freebuds-se-2.png" alt="HUAWEI FreeBuds SE 2: left, right and case batteries, the case charging, no mode row" width="100%"></td>
 <td width="50%"></td>
 </tr>
 <tr>
