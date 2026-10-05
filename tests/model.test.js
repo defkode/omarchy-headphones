@@ -1153,16 +1153,6 @@ Deno.test("a device with no mode row is not told it cancels noise", () => {
   assertEquals(Model.heroPhrases(modes, modes, false), modes);
 });
 
-Deno.test("only a row that opts in draws the case charging bolt", () => {
-  assertEquals(Model.caseChargingShown("huawei"), true);
-  for (const row of Model.BACKENDS.filter(r => r.name !== "huawei")) {
-    assertEquals(Model.caseChargingShown(row.name), false, row.name);
-  }
-  // A device no backend claims: Fast Pair alone, or BlueZ alone.
-  assertEquals(Model.caseChargingShown(""), false);
-  assertEquals(Model.caseChargingShown("nope"), false);
-});
-
 Deno.test("TOZO six modes are explicit and keep the existing default four", () => {
   const modes = ["off", "anc", "ambient", "wind", "leisure", "adaptive"];
   assertEquals(Model.modesAvailable({available:modes}, "tozo"), modes);

@@ -3,7 +3,7 @@
   "owner": "defkode",
   "bridge": "huawei-bridge",
   "capture": "docs/captures/huawei-freebuds-se-2.txt",
-  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud reads 0 once the case lid closes on it, and is left out. Tag 3's case byte is 01 on a cable and 00 off it; the buds' bytes never changed, so no bud is reported charging. No noise control: the line lists no modes. Frames from sessions 2 and 3 of the capture.",
+  "notes": "Battery only, on RFCOMM channel 1 (16 refused). The earbuds send an empty 01 06 when the channel opens, announce the battery on their own (01 27) and answer the query (01 08) with the same tags. A bud reads 0 once the case lid closes on it, and is left out. Tag 3 is not read: its case byte is relayed by the left bud and goes stale without it, and the buds' bytes never changed. No noise control: the line lists no modes. Frames from sessions 2 and 3 of the capture.",
   "session": {},
   "steps": [
     {
@@ -35,7 +35,6 @@
           "left": 97,
           "right": 97,
           "case": 23,
-          "charging": [],
           "caseStale": false
         }
       }
@@ -67,7 +66,6 @@
         "battery": {
           "right": 97,
           "case": 23,
-          "charging": [],
           "caseStale": false
         }
       },
@@ -89,7 +87,6 @@
           "left": 96,
           "right": 97,
           "case": 23,
-          "charging": [],
           "caseStale": false
         }
       }
@@ -105,7 +102,6 @@
         "battery": {
           "left": 96,
           "case": 23,
-          "charging": [],
           "caseStale": false
         }
       }
@@ -122,14 +118,13 @@
           "left": 96,
           "right": 97,
           "case": 23,
-          "charging": [],
           "caseStale": false
         }
       }
     },
     {
       "device": "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 3f 03 03 00 00 01 04 02 14 0a c2 6a",
-      "note": "session 3: the case goes on a cable, at 63"
+      "note": "session 3: case byte 01, case at 63; not a charging state"
     },
     {
       "line": {
@@ -139,16 +134,13 @@
           "left": 95,
           "right": 96,
           "case": 63,
-          "charging": [
-            "case"
-          ],
           "caseStale": false
         }
       }
     },
     {
       "device": "5a 00 14 00 01 27 01 01 60 02 03 00 60 40 03 03 00 00 01 04 02 14 0a 3e e5",
-      "note": "the lid closes on the left bud while the case charges"
+      "note": "the lid closes on the left bud"
     },
     {
       "line": {
@@ -157,16 +149,13 @@
         "battery": {
           "right": 96,
           "case": 64,
-          "charging": [
-            "case"
-          ],
           "caseStale": false
         }
       }
     },
     {
       "device": "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 40 03 03 00 00 00 04 02 14 0a e1 0b",
-      "note": "off the cable: the case byte back to 00"
+      "note": "case byte back to 00: nothing printed changes but the level"
     },
     {
       "line": {
@@ -176,7 +165,6 @@
           "left": 95,
           "right": 96,
           "case": 64,
-          "charging": [],
           "caseStale": false
         }
       }

@@ -529,10 +529,7 @@ var BACKENDS = [
     // its battery channel sits behind, like the TOZO row above.
     modelNames: ["HUAWEI FreeBuds SE 2"],
     modelUuids: ["00001101-0000-1000-8000-00805f9b34fb"],
-    args: ["address", "name"],
-    // Its case's charging byte followed the cable on the owner's hardware,
-    // so the panel may draw the bolt the Case row leaves off elsewhere.
-    caseCharging: true },
+    args: ["address", "name"] },
   { name: "jbl", bridge: "jbl-bridge",
     ble: true, args: ["bleAddress", "modelId"] }
 ]
@@ -609,14 +606,6 @@ function heroPhrases(all, aboutModes, hasModes) {
   for (var i = 0; i < all.length; i++)
     if (aboutModes.indexOf(all[i]) === -1) out.push(all[i])
   return out.length > 0 ? out : all
-}
-
-// Whether the Case row draws a charging bolt on this backend. Off unless the
-// row says so: the Fast Pair case bit was seen to lie (see Panel.qml), and a
-// backend earns the bolt by its owner seeing its case byte follow the cable.
-function caseChargingShown(backend) {
-  var row = backendRow(backend)
-  return !!row && row.caseCharging === true
 }
 
 // The Ambient dial's range and the switch's name on this backend.

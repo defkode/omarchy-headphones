@@ -29,7 +29,7 @@ ANSWER_98_98_23 = "5a 00 14 00 01 08 01 01 62 02 03 62 62 17 03 03 00 00 00 04 0
 CASE_IN = "5a 00 06 00 2b 5f 01 01 01 13 24"
 LEFT_IN_CASE = "5a 00 14 00 01 27 01 01 61 02 03 00 61 17 03 03 00 00 00 04 02 14 0a 18 77"
 CASE_OUT = "5a 00 06 00 2b 5f 01 01 00 03 05"
-# Session 3: the case on a cable (charging byte 01), and off it (00).
+# Session 3: the case byte 01, then 00, with the left bud docked throughout.
 CASE_CHARGING = "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 3f 03 03 00 00 01 04 02 14 0a c2 6a"
 CASE_OFF_CABLE = "5a 00 14 00 01 27 01 01 5f 02 03 5f 60 40 03 03 00 00 00 04 02 14 0a e1 0b"
 
@@ -95,7 +95,7 @@ class Framing(unittest.TestCase):
         self.assertEqual([(s, c) for s, c, _ in frames], [(1, 0x06), (1, 0x27), (1, 0x08)])
         self.assertEqual(buffer, bytearray())
         self.assertEqual(bridge_module.parse_battery(frames[2][2]),
-                         ({"left": 98, "right": 98, "case": 23}, []))
+                         {"left": 98, "right": 98, "case": 23})
 
     def test_a_real_answer_survives_being_split_at_every_byte_boundary(self):
         raw = harness.hexbytes(ANSWER_98_98_23)
@@ -110,12 +110,16 @@ class Framing(unittest.TestCase):
     def test_a_bud_in_a_closed_case_reads_0_and_is_left_out(self):
         frames = bridge_module.take_frames(bytearray(harness.hexbytes(CASE_IN + " " + LEFT_IN_CASE)))
         self.assertEqual([(s, c) for s, c, _ in frames], [(0x2B, 0x5F), (1, 0x27)])
-        self.assertEqual(bridge_module.parse_battery(frames[1][2]), ({"right": 97, "case": 23}, []))
+        self.assertEqual(bridge_module.parse_battery(frames[1][2]), {"right": 97, "case": 23})
 
-    def test_the_case_on_a_cable_reads_charging(self):
-        for text, expected in ((CASE_CHARGING, ["case"]), (CASE_OFF_CABLE, [])):
+    def test_the_case_byte_on_and_off_a_cable_changes_nothing_printed(self):
+        # The case byte is relayed by the left bud and goes stale without it
+        # (the owner unplugged the case and it still read 01), so it is not
+        # a charging state; the two frames differ in it, and in the case level.
+        for text, case in ((CASE_CHARGING, 63), (CASE_OFF_CABLE, 64)):
             frames = bridge_module.take_frames(bytearray(harness.hexbytes(text)))
-            self.assertEqual(bridge_module.parse_battery(frames[0][2])[1], expected, text)
+            self.assertEqual(bridge_module.parse_battery(frames[0][2]),
+                             {"left": 95, "right": 96, "case": case}, text)
 
     def test_bytes_before_a_frame_are_skipped(self):
         buffer = bytearray(b"\x00\x13\x37" + harness.hexbytes(ANSWER_98_98_23))
@@ -137,29 +141,19 @@ class Malformed(unittest.TestCase):
         self.assertEqual(bridge_module.take_frames(raw), [])
 
     def test_a_tlv_that_runs_off_the_end_is_nothing(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 62 62")), (None, None))
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 62 62")), None)
 
     def test_no_tag_2_is_nothing(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("01 01 62")), (None, None))
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("01 01 62")), None)
 
     def test_a_level_over_100_is_dropped_not_clamped(self):
-        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 65 62 17")), (None, None))
+        self.assertEqual(bridge_module.parse_battery(harness.hexbytes("02 03 65 62 17")), None)
 
-    def test_only_the_case_charging_byte_is_read(self):
-        # Synthetic: the buds' bytes were never seen non-zero, a bud charging
-        # in the case included, so they say nothing here.
-        self.assertEqual(
-            bridge_module.parse_battery(harness.hexbytes("02 03 62 62 17 03 03 01 01 00")),
-            ({"left": 98, "right": 98, "case": 23}, []))
+    def test_the_charging_bytes_are_not_read(self):
+        # Synthetic: whatever tag 3 says, no part is reported charging.
         self.assertEqual(
             bridge_module.parse_battery(harness.hexbytes("02 03 62 62 17 03 03 01 01 01")),
-            ({"left": 98, "right": 98, "case": 23}, ["case"]))
-
-    def test_a_charging_case_that_reads_0_is_not_charging_anything(self):
-        # Synthetic: a 0 is left out, and so is its charging flag.
-        self.assertEqual(
-            bridge_module.parse_battery(harness.hexbytes("02 03 62 62 00 03 03 00 00 01")),
-            ({"left": 98, "right": 98}, []))
+            {"left": 98, "right": 98, "case": 23})
 
     def test_a_frame_for_another_command_prints_nothing(self):
         s = Session()
@@ -270,8 +264,7 @@ class Loop(unittest.TestCase):
                          ["5a 00 09 00 01 08 01 00 02 00 03 00 fb b9"])
         self.assertEqual(self.lines, [{
             "modes": True, "available": [],
-            "battery": {"left": 98, "right": 98, "case": 23,
-                        "charging": [], "caseStale": False}}])
+            "battery": {"left": 98, "right": 98, "case": 23, "caseStale": False}}])
 
     def test_silence_through_the_deadline_is_exit_3(self):
         self.script([(None, None, None)] * 20)

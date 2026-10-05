@@ -645,14 +645,11 @@ Panel {
           // charging bit stayed set for minutes with the case empty and unplugged
           // — while reading clear at a moment the case was plugged in. A level
           // that lags is a small lie; a bolt claiming "charging, now" when the
-          // cable is out is a plain one, so the level stays and the bolt goes —
-          // except on a backend whose row says its case byte was seen to follow
-          // the cable (`caseCharging` in BACKENDS: the Huawei FreeBuds SE 2).
+          // cable is out is a plain one, so the level stays and the bolt goes.
           BatteryRow {
             label: "Case"
             level: root.caseLevel
-            charging: root.caseCharging
-              && Model.caseChargingShown(root.current ? root.current.controlBackend : "")
+            charging: false
             // A case that has closed stops reporting; its last reading stays,
             // dimmed, rather than going to a dash.
             stale: root.caseStale

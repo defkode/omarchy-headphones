@@ -2080,8 +2080,8 @@ it wants with zero length.
 | Lid closes on / opens off a bud | — | `5a 00 06 00 2b 5f 01 01 01 13 24` / `… 01 01 00 03 05` |
 
 In the battery answer, tag 1 is an overall level, tag 2 three bytes — left,
-right, case — and tag 3 a charging byte for each, in the same order. Tag 4
-(`14 0a`) never changed.
+right, case — and tag 3 three more in the same order, which look like
+charging bytes but are not read (below). Tag 4 (`14 0a`) never changed.
 
 ### What was verified on the hardware
 
@@ -2092,11 +2092,14 @@ right, case — and tag 3 a charging byte for each, in the same order. Tag 4
   When the lid **closes** on it, `2b 5f 01` arrives and the bud reads **0**;
   when the lid opens, `2b 5f 00` and its level again. The overall level did
   not follow it to 0. Seen for each bud.
-- The case's charging byte is `01` on a cable and `00` off it: it rose to
-  `01` within seconds of the case being plugged in, and the case level
-  climbed 63 → 64 → 66 → 68 while it was. The case figure is live, not
-  only read on the lid.
-- The buds' charging bytes stayed `00` throughout, including the left bud
+- **The case is reported second-hand, through the left bud.** In session 3
+  the case byte in tag 3 went `01` → `00` → `01` in step with the cable,
+  but the left bud was docked throughout. Afterwards, with the bridge
+  running, the owner unplugged the case and the byte stayed `01`, and the
+  case level rose 68 → 72 *after* the unplug; it refreshed when the left
+  bud was docked, and not when the right one was. So the case byte is not a
+  live charging state, and the case level lags in the same way.
+- The buds' bytes in tag 3 stayed `00` throughout, including the left bud
   sitting in the case, on battery and on the cable, at 95%.
 - The battery query was answered every time it was asked, 3–5 s apart.
 - **One client at a time.** With the owner's phone also connected, the
@@ -2111,12 +2114,16 @@ right, case — and tag 3 a charging byte for each, in the same order. Tag 4
 `huawei-bridge` asks for the battery on connect, then takes the earbuds'
 own `01 27` announcements, with a query every 60 s as a backstop. A 0 is a
 bud that is not reporting — it is left out of the line rather than drawn
-empty. A refused channel is exit 1 with a line naming the likely holder,
-so the panel says why and the shell keeps retrying until the phone lets go. The case is reported charging from its byte; a bud never is. The
-line is `"modes": true, "available": []`, which hides the mode row.
+empty. Tag 3 is not read, so no part is ever reported charging: the Case
+row's no-bolt rule in `Panel.qml` holds here for the reason it was written,
+a case reported second-hand says "charging" late. A refused channel is
+exit 1 with a line naming the likely holder, so the panel says why and the
+shell keeps retrying until the phone lets go. The line is
+`"modes": true, "available": []`, which hides the mode row.
 
 ### Not established
 
 Whether a bud's charging byte ever changes — at a lower level than 95%,
-perhaps; until it is seen, a charging bud is not shown as one. What tag 4
-means. No write was ever sent.
+perhaps. Whether the case figures ever refresh through the right bud (the
+owner saw them refresh through the left only). What tag 4 means. No write
+was ever sent.
